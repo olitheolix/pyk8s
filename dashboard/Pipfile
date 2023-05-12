@@ -1,0 +1,29 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+prometheus-client = "*"
+aiohttp = "*"
+aioresponses = "*"
+pytest-asyncio = "*"
+pyyaml = "*"
+
+[dev-packages]
+pytest = "*"
+httpx = "*"
+mypy = "*"
+pytest-cov = "*"
+pycodestyle = "*"
+bumpversion = "*"
+isort = "*"
+sh = "*"
+types-pyyaml = "*"
+pytest-dotenv = "*"
+
+[requires]
+python_version = "3.10"
+python_full_version = "3.10.6"

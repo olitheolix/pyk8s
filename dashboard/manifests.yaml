@@ -1,0 +1,116 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+rules:
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - services
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources:
+  - deployments
+  verbs: ["get", "list"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dashboard
+  labels:
+    app: dashboard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dashboard
+subjects:
+- kind: ServiceAccount
+  name: dashboard
+  namespace: default
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard
+  namespace: default
+  labels:
+    app: dashboard
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      serviceAccount: dashboard
+      containers:
+      - name: main
+        env:
+        - name: service_port
+          value: "8080"
+        - name: log_level
+          value: info
+        - name: K8S_CREDENTIALS_PATH
+          value: "/var/run/secrets/kubernetes.io/serviceaccount/"
+        image: dashboard:latest
+        imagePullPolicy: Never
+        ports:
+          - name: http
+            containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 1
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+
