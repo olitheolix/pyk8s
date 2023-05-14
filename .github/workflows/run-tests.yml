@@ -1,0 +1,80 @@
+name: build
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Build Docker Image
+        run: |
+          cd dashboard
+          docker build -t dashboard -f Dockerfile .
+
+      - name: Download KinD Binaries
+        run: |
+          mkdir ~/bin
+          curl -L --output ~/bin/kubectl https://dl.k8s.io/release/v1.24.5/bin/linux/amd64/kubectl
+          curl -L --output ~/bin/kind https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
+          chmod +x ~/bin/kubectl ~/bin/kind
+
+      - name: Deploy Application to KinD
+        run: |
+          cd integration-test-cluster
+          ./start_cluster.sh
+          cp /tmp/kubeconfig-kind.yaml ~/.kube/config
+
+          kind load docker-image dashboard
+
+          cd ../dashboard
+          export KUBECONFIG=
+          kubectl create -f manifests.yaml
+
+      - name: Install Python Dependencies
+        run: |
+          cd dashboard
+          python -m pip install --upgrade pip
+          pip install pipenv
+          pipenv install --system --deploy --dev
+
+      - name: Static Analysis
+        run: |
+          cd dashboard
+          mypy ./
+          pycodestyle ./
+          isort --check-only ./
+
+      # Run the tests and abort if coverage is below 100%.
+      - name: Unit Tests
+        run: |
+          cd dashboard
+          pytest --cov=src --cov-report=term-missing --cov-report=xml --cov-fail-under=100
+
+      # Test the application on our KinD cluster.
+      - name: Integration Tests
+        run: |
+          # Port forward the `dashboard` service so that we can curl it afterwards.
+          kubectl port-forward svc/dashboard 8080:80&
+
+          # Wait until the port forwarding for `svc/dasbhoard` is fully established.
+          for ((i=1; i<=10; i++)); do
+            sleep 1
+            curl localhost:8080/k8s-namespaces
+            if [ $? -eq 0 ]; then
+              break
+            fi
+          done
+
+          # Ask for all namespaces and verify that "default" and "kube-system" are among them.
+          curl localhost:8080/k8s-namespaces 2> /dev/null | jq '.namespaces' | grep default
+          curl localhost:8080/k8s-namespaces 2> /dev/null | jq '.namespaces' | grep kube-system
