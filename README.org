@@ -1,0 +1,13 @@
+#+BEGIN_HTML
+<div align="left">
+
+<img src="https://img.shields.io/badge/license-Apache%202-blue.svg?style=flat-square&logo=org&logoColor=white"></a>
+<img src="https://img.shields.io/badge/python-3.10+-blue.svg?style=flat-square&logo=org&logoColor=white"></a>
+<img src="https://img.shields.io/badge/latest-v1.0.0-blue.svg?style=flat-square&logo=org&logoColor=white"></a>
+
+</div>
+#+END_HTML
+
+This repository contains generic yet production grade template projects. They do
+not serve any particular purpose other than saving me time when I have to setup
+a new project.

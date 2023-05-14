@@ -1,0 +1,42 @@
+* FastAPI App That Interacts With Kubernetes
+
+The app will provide the Kubernetes namespaces of the cluster it is running on
+via an API. The code is production grade and ships with unit- and
+integration tests as well as a Github Action pipeline.
+
+** Quickstart
+#+begin_src bash
+  pipenv install --dev
+  pipenv run python -m src.main
+
+  curl localhost:8080/healthz
+#+end_src
+
+The API documentation as available in [[http://localhost:8080/docs][OpenAPI]] and [[http://localhost:8080/redoc][ReDoc]] format.
+
+** Deploy To Kubernetes
+Assuming you started the integration test cluster, you can deploy the app with
+
+#+begin_src bash
+  docker build -t dashboard -f Dockerfile .
+  kind load docker-image dashboard
+  kubectl create -f manifests.yaml
+#+end_src
+
+Then port-forward the service and use =curl=:
+
+#+begin_src bash
+  kubectl port-forward svc/dashboard 8080:80 &
+  curl localhost:8080/healthz
+  curl localhost:8080/k8s-namespaces
+#+end_src
+
+** Tests
+The application ships with a comprehensive test suite and a [[file:.github/workflows/run-tests.yml][Github Action]]
+to run it on each commit. To run it locally:
+
+#+begin_src bash
+  pipenv run pytest --cov . --cov-report=term-missing
+  pipenv run mypy .
+  pipenv run pycodestyle .
+#+end_src
